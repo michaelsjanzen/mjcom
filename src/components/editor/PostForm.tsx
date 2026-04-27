@@ -156,7 +156,7 @@ function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, g
   generating?: boolean;
   currentStep?: string | null;
   summary?: { step: string; applied: boolean; detail: string }[] | null;
-  onFix?: () => void;
+  onFix?: (key: string) => void;
   fixing?: string | null;
 }) {
   const { score, items } = calcAeoHealth(aeo, content, featuredAlt);
@@ -188,15 +188,15 @@ function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, g
                   {!item.pass && aiEnabled && item.fixTool && onFix && (
                     <button
                       type="button"
-                      onClick={onFix}
+                      onClick={() => onFix(item.key)}
                       disabled={!!fixing}
                       className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed ${
-                        fixing === item.fixTool
+                        fixing === item.key
                           ? "btn-processing border-transparent text-white cursor-wait"
                           : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
                       }`}
                     >
-                      {fixing === item.fixTool ? "Working…" : "Generate"}
+                      {fixing === item.key ? "Working…" : "Generate"}
                     </button>
                   )}
                   {!item.pass && item.scrollTo && (
@@ -500,8 +500,49 @@ export default function PostForm({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fixingKey, setFixingKey] = useState<string | null>(null);
 
-  // Debounced autosave — fires 10s after last change, edit mode only.
+  // localStorage draft key for new posts (no postId yet)
+  const LS_DRAFT_KEY = "pugmill:draft:new-post";
+
+  // On mount for new posts: check localStorage for a recoverable draft
+  const [localDraftAvailable, setLocalDraftAvailable] = useState(false);
+  useEffect(() => {
+    if (postId) return; // edit mode — no local draft needed
+    try {
+      const raw = localStorage.getItem(LS_DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const age = Date.now() - (parsed.savedAt ?? 0);
+      if (age < 24 * 60 * 60 * 1000 && (parsed.title || parsed.content)) {
+        setLocalDraftAvailable(true);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // For new posts: save to localStorage 3s after last change
+  const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (postId || !isDirty) return;
+    if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+    localSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(LS_DRAFT_KEY, JSON.stringify({
+          title,
+          slug,
+          content: editorRef.current?.getContent() ?? "",
+          excerpt,
+          savedAt: Date.now(),
+        }));
+        setAutosaveStatus("saved");
+        setTimeout(() => setAutosaveStatus("idle"), 3000);
+      } catch { /* quota exceeded or private mode */ }
+    }, 3_000);
+    return () => { if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current); };
+  }, [isDirty, title, slug, excerpt, postId]);
+
+  // Debounced server autosave — fires 3s after last change, edit mode only.
   useEffect(() => {
     if (!isDirty || !postId) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -525,7 +566,7 @@ export default function PostForm({
       } else {
         setAutosaveStatus("error");
       }
-    }, 10_000);
+    }, 3_000);
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
   }, [isDirty, title, slug, excerpt, seoTitle, seoMetaDescription, aeoMeta, canonicalUrl, ogImageUrl, postId]);
 
@@ -619,6 +660,11 @@ export default function PostForm({
     editorRef,
     aeoRef,
   });
+
+  // Clear fixingKey once the AEO action completes.
+  useEffect(() => {
+    if (pendingAction !== "aeo") setFixingKey(null);
+  }, [pendingAction]);
 
   function renderToolResult(action: string, result: string) {
     let content: React.ReactNode;
@@ -780,6 +826,41 @@ export default function PostForm({
 
       {/* Spacer — matches fixed bar height so content doesn't hide underneath it */}
       <div className="h-12 shrink-0" />
+
+      {localDraftAvailable && (
+        <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+          <span className="flex-1">A locally saved draft was found. Restore it?</span>
+          <button
+            type="button"
+            className="font-medium underline hover:text-amber-900"
+            onClick={() => {
+              try {
+                const raw = localStorage.getItem(LS_DRAFT_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw) as { title?: string; slug?: string; content?: string; excerpt?: string };
+                if (parsed.title) setTitle(parsed.title);
+                if (parsed.slug) { setSlug(parsed.slug); setSlugManuallySet(true); }
+                if (parsed.content) editorRef.current?.setContent(parsed.content);
+                if (parsed.excerpt) setExcerpt(parsed.excerpt);
+                setIsDirty(true);
+              } catch { /* ignore */ }
+              setLocalDraftAvailable(false);
+            }}
+          >
+            Restore
+          </button>
+          <button
+            type="button"
+            className="text-amber-500 hover:text-amber-700"
+            onClick={() => {
+              localStorage.removeItem(LS_DRAFT_KEY);
+              setLocalDraftAvailable(false);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {aiError && (
         <p className="text-xs text-red-500 mb-4">{aiError}</p>
@@ -1279,8 +1360,8 @@ export default function PostForm({
               generating={agentRunning}
               currentStep={agentCurrentStep}
               summary={agentSummary}
-              onFix={() => handleDraftAeo()}
-              fixing={pendingAction === "aeo" && !agentRunning ? "aeo" : null}
+              onFix={(key) => { setFixingKey(key); handleDraftAeo(); }}
+              fixing={fixingKey && pendingAction === "aeo" && !agentRunning ? fixingKey : null}
             />
 
             {/* AI usage meter */}

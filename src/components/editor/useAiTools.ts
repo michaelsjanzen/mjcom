@@ -383,19 +383,23 @@ export function useAiTools({
 
   async function handleDraftAeo() {
     setPendingAction("aeo");
-    const [aeoResult, kwResult] = await Promise.all([
-      callAi("aeo"),
-      callAi("keywords"),
-    ]);
-    setPendingAction(null);
-    if (!aeoResult) return;
+    // Run sequentially to avoid parallel request interference / parse errors.
+    const aeoResult = await callAi("aeo");
+    if (!aeoResult) { setPendingAction(null); return; }
+    let parsed: AeoMetadata;
     try {
-      const parsed = parseJson<AeoMetadata>(aeoResult);
-      if (kwResult) {
-        try { parsed.keywords = parseJson<string[]>(kwResult); } catch { /* keep existing */ }
-      }
-      aeoRef.current?.setValue(parsed);
-    } catch { setAiError("Could not parse AI response. Try again."); }
+      parsed = parseJson<AeoMetadata>(aeoResult);
+    } catch {
+      setAiError("Could not parse AI response. Try again.");
+      setPendingAction(null);
+      return;
+    }
+    const kwResult = await callAi("keywords");
+    if (kwResult) {
+      try { parsed.keywords = parseJson<string[]>(kwResult); } catch { /* keep existing */ }
+    }
+    aeoRef.current?.setValue(parsed);
+    setPendingAction(null);
   }
 
   async function runMoreAi(type: string) {
