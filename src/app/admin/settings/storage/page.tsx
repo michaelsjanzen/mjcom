@@ -20,7 +20,9 @@ export default async function StorageSettingsPage({
   const storage = config.storage;
   const saved = sp.toast === "saved";
   const isS3 = storage?.provider === "s3";
-  const isConfigured = isS3 && !!storage?.bucket;
+  const isS3Configured = isS3 && !!storage?.bucket;
+  const isVercelBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
+  const isPermanent = isS3Configured || isVercelBlob;
 
   return (
     <PageShell
@@ -28,19 +30,31 @@ export default async function StorageSettingsPage({
       description="Where uploaded media files are stored. Switch to S3-compatible storage for permanent, portable file hosting."
       saved={saved}
     >
-      {isConfigured && (
-        <div className="bg-emerald-600 rounded-lg px-4 py-3 text-sm text-white">
-          S3 storage active — bucket: <strong>{storage.bucket}</strong>
+      {/* Active provider status */}
+      {isVercelBlob && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
+          <strong>Vercel Blob storage is active.</strong> Files are stored permanently via Vercel Blob — no action needed.
+        </div>
+      )}
+
+      {isS3Configured && !isVercelBlob && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
+          <strong>S3 storage is active</strong> — bucket: <strong>{storage.bucket}</strong>
           {storage.endpoint ? `, endpoint: ${storage.endpoint}` : ""}
         </div>
       )}
 
-      {!isS3 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-          <strong>Local storage is active.</strong> Files are saved to <code>/public/uploads</code> on the server.
-          On platforms with ephemeral filesystems (Replit, Vercel, etc.) uploads will not survive a restart.
-          Configure an S3-compatible provider below for permanent storage.
-        </div>
+      {!isPermanent && (
+        <>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3 text-sm text-zinc-700">
+            <strong>Local storage is active.</strong> Files are saved to <code>/public/uploads</code> on the server.
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+            <strong>Ephemeral filesystem warning.</strong> On platforms like Vercel or Replit, the local filesystem
+            is reset on every deployment or restart — uploaded files will be lost.
+            Configure Vercel Blob or an S3-compatible provider below for permanent storage.
+          </div>
+        </>
       )}
 
       <form action={saveStorageSettings} className="space-y-8">
@@ -60,6 +74,7 @@ export default async function StorageSettingsPage({
             </select>
             <p className="text-xs text-zinc-400 mt-1">
               Changing this does not migrate existing files — new uploads go to the new provider.
+              {isVercelBlob && " Vercel Blob is auto-detected from BLOB_READ_WRITE_TOKEN and takes precedence over this setting."}
             </p>
           </div>
         </div>
