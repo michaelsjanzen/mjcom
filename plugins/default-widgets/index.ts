@@ -17,16 +17,18 @@ import { relatedPostsWidget } from "./widgets/related-posts";
 import { categoriesWidget } from "./widgets/categories";
 import { siblingPagesWidget } from "./widgets/sibling-pages";
 import { childPagesWidget } from "./widgets/child-pages";
+import { aeoFaqWidget } from "./widgets/aeo-faq";
 
-const POST_AREAS = ["sidebar-post", "post-footer"] as const;
-const PAGE_AREAS = ["sidebar-page"] as const;
-const BOTH_AREAS = ["sidebar-post", "sidebar-page", "post-footer"] as const;
+const POST_AREAS  = ["sidebar-post", "post-footer"] as const;
+const PAGE_AREAS  = ["sidebar-page"] as const;
+const BOTH_AREAS  = ["sidebar-post", "sidebar-page", "post-footer"] as const;
+const ALL_AREAS   = ["sidebar-post", "sidebar-page", "post-footer", "page-footer"] as const;
 
 export const defaultWidgetsPlugin: PugmillPlugin = {
   id: "default-widgets",
   name: "Default Widgets",
   version: "1.0.0",
-  description: "Table of Contents, Recent Posts, Related Posts, Categories, Sibling Pages, and Sub-pages.",
+  description: "Table of Contents, Recent Posts, Related Posts, Categories, Sibling Pages, Sub-pages, and FAQ.",
 
   widgets: [
     {
@@ -86,6 +88,32 @@ export const defaultWidgetsPlugin: PugmillPlugin = {
       description: "Child pages nested under this page.",
       areas: [...PAGE_AREAS],
       component: childPagesWidget,
+    },
+    {
+      id: "aeo-faq",
+      label: "FAQ",
+      description: "Displays the Q&A pairs from a post or page's AEO metadata.",
+      areas: [...ALL_AREAS],
+      configSchema: {
+        heading: {
+          type: "text",
+          label: "Heading",
+          default: "Frequently Asked Questions",
+          description: "Section heading shown above the FAQ. Leave blank to hide the heading.",
+        },
+        style: {
+          type: "select",
+          label: "Display style",
+          default: "plain",
+          description: "How Q&A pairs are presented.",
+          options: [
+            { value: "plain",     label: "Plain — question + answer always visible" },
+            { value: "accordion", label: "Accordion — click to expand each answer" },
+            { value: "numbered",  label: "Numbered — numbered list with visible answers" },
+          ],
+        },
+      },
+      component: aeoFaqWidget,
     },
   ],
 
