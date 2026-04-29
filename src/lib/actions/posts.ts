@@ -18,7 +18,7 @@ const postSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   slug: z.string().max(255).regex(/^[a-z0-9-]*$/, "Slug can only contain lowercase letters, numbers, and hyphens").optional(),
   content: z.string().min(1, "Content is required").max(200000),
-  excerpt: z.string().max(500).optional(),
+  excerpt: z.string().max(2000).optional(),
   publishAt: z.string().optional(),
   parentId: z.number().int().positive().nullable().optional(),
   aeoMetadata: aeoSchema,
@@ -79,6 +79,22 @@ async function assertParentIdAuthorized(parentId: number | null, userId: string)
 
 
 export async function createPost(formData: FormData) {
+  try {
+    return await _createPost(formData);
+  } catch (err) {
+    // Re-throw Next.js redirect/not-found signals unchanged so they work correctly.
+    if (err instanceof Error && (err.message === "NEXT_REDIRECT" || err.message === "NEXT_NOT_FOUND")) throw err;
+    // Also re-throw by checking the digest property Next.js sets on these special errors.
+    if (err && typeof err === "object" && "digest" in err && typeof (err as { digest: unknown }).digest === "string") {
+      const digest = (err as { digest: string }).digest;
+      if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND")) throw err;
+    }
+    console.error("[createPost] Unhandled error:", err);
+    throw err;
+  }
+}
+
+async function _createPost(formData: FormData) {
   const user = await requireAdminOrEditor();
   await loadPlugins();
 
@@ -171,6 +187,20 @@ export async function createPost(formData: FormData) {
 }
 
 export async function updatePost(id: number, formData: FormData) {
+  try {
+    return await _updatePost(id, formData);
+  } catch (err) {
+    if (err instanceof Error && (err.message === "NEXT_REDIRECT" || err.message === "NEXT_NOT_FOUND")) throw err;
+    if (err && typeof err === "object" && "digest" in err && typeof (err as { digest: unknown }).digest === "string") {
+      const digest = (err as { digest: string }).digest;
+      if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND")) throw err;
+    }
+    console.error(`[updatePost id=${id}] Unhandled error:`, err);
+    throw err;
+  }
+}
+
+async function _updatePost(id: number, formData: FormData) {
   const user = await requireAdminOrEditor();
   await loadPlugins();
 

@@ -15,22 +15,28 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const postId = parseInt(id);
 
-  const [post, allCategories, allTags, allPages, currentCategories, currentTags, aiEnabled, allMedia] = await Promise.all([
-    db.query.posts.findFirst({ where: eq(posts.id, postId) }),
-    db.select().from(categories).orderBy(categories.name),
-    db.select().from(tags).orderBy(tags.name),
-    db.select({ id: posts.id, title: posts.title })
-      .from(posts)
-      .where(eq(posts.type, "page"))
-      .orderBy(posts.title),
-    db.select().from(postCategories).where(eq(postCategories.postId, postId)),
-    db.select().from(postTags).where(eq(postTags.postId, postId)),
-    isAiConfigured(),
-    db.select({ id: media.id, url: media.url, fileName: media.fileName, altText: media.altText })
-      .from(media)
-      .where(like(media.fileType, "image/%"))
-      .orderBy(desc(media.createdAt)),
-  ]);
+  let post, allCategories, allTags, allPages, currentCategories, currentTags, aiEnabled, allMedia;
+  try {
+    [post, allCategories, allTags, allPages, currentCategories, currentTags, aiEnabled, allMedia] = await Promise.all([
+      db.query.posts.findFirst({ where: eq(posts.id, postId) }),
+      db.select().from(categories).orderBy(categories.name),
+      db.select().from(tags).orderBy(tags.name),
+      db.select({ id: posts.id, title: posts.title })
+        .from(posts)
+        .where(eq(posts.type, "page"))
+        .orderBy(posts.title),
+      db.select().from(postCategories).where(eq(postCategories.postId, postId)),
+      db.select().from(postTags).where(eq(postTags.postId, postId)),
+      isAiConfigured(),
+      db.select({ id: media.id, url: media.url, fileName: media.fileName, altText: media.altText })
+        .from(media)
+        .where(like(media.fileType, "image/%"))
+        .orderBy(desc(media.createdAt)),
+    ]);
+  } catch (err) {
+    console.error(`[EditPostPage id=${postId}] Data fetch error:`, err);
+    throw err;
+  }
 
   if (!post) notFound();
 
