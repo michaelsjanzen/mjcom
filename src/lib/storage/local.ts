@@ -7,9 +7,9 @@ import type { StorageProvider, UploadResult } from "./types";
  *
  * Saves files to /public/uploads on the local filesystem.
  * Suitable for local development and single-server deployments with
- * persistent storage (e.g. a VPS, Replit, or Railway with a volume).
+ * persistent storage (e.g. a VPS, Replit, or any host with a volume).
  *
- * NOT suitable for stateless / ephemeral platforms like Vercel.
+ * NOT suitable for stateless / ephemeral containers.
  * Set STORAGE_PROVIDER=s3 to switch to S3-compatible storage.
  */
 export class LocalStorageProvider implements StorageProvider {

@@ -206,10 +206,10 @@ const DEFAULT_CONFIG: Config = {
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 // Avoids a DB hit on every request. Invalidated on write or after TTL expires.
 // TTL-based expiry prevents config drift across multi-instance / serverless
-// deployments where each process has its own memory (e.g. Vercel functions).
+// deployments where each process has its own memory.
 // For true real-time invalidation, replace with Redis pub/sub.
 
-// 5 seconds: short enough that cross-instance staleness (Vercel warm containers)
+// 5 seconds: short enough that cross-instance staleness (warm containers)
 // clears quickly after a write, but still avoids repeat DB hits within a single
 // server-side render. Don't raise this — plugin toggles must be immediately
 // consistent when the user navigates back.

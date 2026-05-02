@@ -6,8 +6,8 @@
  * replit-init.ts (prestart) are available to the Next.js process even
  * in environments where .env.local is not automatically picked up.
  *
- * On Vercel: .env.local does not exist — env vars come from Vercel's
- * secrets panel. This script skips loading gracefully.
+ * On hosts where .env.local does not exist (env vars come from a platform
+ * secrets panel), this script skips loading gracefully.
  *
  * On Replit: .env.local may contain NEXTAUTH_URL and other vars written
  * by replit-init.ts at prestart time.

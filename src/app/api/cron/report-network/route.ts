@@ -19,9 +19,12 @@ import {
  * is active.
  *
  * Secured with a Bearer token matching CRON_SECRET.
- * Vercel calls this automatically at 02:00 UTC via vercel.json cron config.
- * For self-hosted installs:
+ *
+ * Trigger this once per day from any HTTP scheduler — system cron,
+ * cron-job.org, GitHub Actions, an external uptime service, etc.:
  *   curl -H "Authorization: Bearer $CRON_SECRET" https://yoursite.com/api/cron/report-network
+ *
+ * Recommended schedule: 02:00 UTC daily.
  */
 export async function GET(req: NextRequest) {
   const limited = checkApiRateLimit(req);
@@ -44,24 +47,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── Date: yesterday UTC (used for every record-submission path below) ──────
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const date = yesterday.toISOString().slice(0, 10); // YYYY-MM-DD
+
   // ── Config check ────────────────────────────────────────────────────────────
+  // Every skip path below records a row in aeo_network_submissions so admins
+  // can debug "why didn't the cron run?" from the Network settings page —
+  // an empty table means the cron didn't fire at all (auth failed before
+  // here, or the scheduler never called the route).
   const config = await getConfig();
 
   if (!config.network?.participateInNetwork) {
+    await recordSubmission(date, "skipped", undefined, "participation_disabled");
     console.log("[CronJob] report-network: participation disabled, skipping.");
-    return NextResponse.json({ skipped: "participation_disabled" });
+    return NextResponse.json({ skipped: "participation_disabled", date });
   }
 
   const networkToken = decryptString(config.network.networkToken?.trim() ?? "");
   if (!networkToken) {
+    await recordSubmission(date, "skipped", undefined, "no_network_token");
     console.warn("[CronJob] report-network: no network token configured, skipping.");
-    return NextResponse.json({ skipped: "no_network_token" });
+    return NextResponse.json({ skipped: "no_network_token", date });
   }
-
-  // ── Date: yesterday UTC ─────────────────────────────────────────────────────
-  const yesterday = new Date();
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const date = yesterday.toISOString().slice(0, 10); // YYYY-MM-DD
 
   // ── Idempotency ─────────────────────────────────────────────────────────────
   if (await alreadySubmitted(date)) {

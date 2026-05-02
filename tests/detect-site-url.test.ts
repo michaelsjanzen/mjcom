@@ -4,7 +4,7 @@ import { detectSiteUrl, detectSetupUrl, isDevUrl } from "../src/lib/detect-site-
 function withEnv(env: Record<string, string | undefined>, fn: () => void) {
   const saved: Record<string, string | undefined> = {};
   const keys = [
-    "NEXTAUTH_URL", "REPLIT_DEV_DOMAIN", "VERCEL_PROJECT_PRODUCTION_URL",
+    "NEXTAUTH_URL", "REPLIT_DEV_DOMAIN",
     "RAILWAY_PUBLIC_DOMAIN", "RENDER_EXTERNAL_URL", "PRODUCTION_URL",
   ];
   for (const k of keys) { saved[k] = process.env[k]; delete process.env[k]; }
@@ -23,7 +23,7 @@ describe("detectSiteUrl", () => {
     withEnv({}, () => expect(detectSiteUrl()).toBeNull());
   });
   it("prefers NEXTAUTH_URL over everything", () => {
-    withEnv({ NEXTAUTH_URL: "https://explicit.com", REPLIT_DEV_DOMAIN: "replit.dev", VERCEL_PROJECT_PRODUCTION_URL: "vercel.app" }, () =>
+    withEnv({ NEXTAUTH_URL: "https://explicit.com", REPLIT_DEV_DOMAIN: "abc.replit.dev" }, () =>
       expect(detectSiteUrl()).toBe("https://explicit.com")
     );
   });
@@ -32,9 +32,9 @@ describe("detectSiteUrl", () => {
       expect(detectSiteUrl()).toBe("https://myapp.replit.dev")
     );
   });
-  it("falls back to VERCEL_PROJECT_PRODUCTION_URL (adds https://)", () => {
-    withEnv({ VERCEL_PROJECT_PRODUCTION_URL: "myapp.vercel.app" }, () =>
-      expect(detectSiteUrl()).toBe("https://myapp.vercel.app")
+  it("falls back to RAILWAY_PUBLIC_DOMAIN (adds https://)", () => {
+    withEnv({ RAILWAY_PUBLIC_DOMAIN: "myapp.up.railway.app" }, () =>
+      expect(detectSiteUrl()).toBe("https://myapp.up.railway.app")
     );
   });
   it("falls back to RENDER_EXTERNAL_URL (already has https://)", () => {

@@ -2,8 +2,8 @@
  * Migration 009 — Add aeo_network_submissions table
  *
  * Idempotency log for the AEO Intelligence Network cron job.
- * One row per reporting date — prevents double-submission if Vercel fires
- * the cron twice, and gives the admin a visible audit trail.
+ * One row per reporting date — prevents double-submission if the cron fires
+ * twice, and gives the admin a visible audit trail.
  *
  * Safe to run multiple times (CREATE TABLE IF NOT EXISTS guard).
  *

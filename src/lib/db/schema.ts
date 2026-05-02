@@ -56,7 +56,7 @@ export const media = pgTable("media", {
 
 // --- AEO Network Submissions Table ---
 // Idempotency log for the intelligence network cron.
-// One row per reporting date — prevents double-submission if Vercel fires the cron twice.
+// One row per reporting date — prevents double-submission if the cron fires twice.
 // Also gives the admin a visible audit trail (last reported, last error, etc.).
 export const aeoNetworkSubmissions = pgTable("aeo_network_submissions", {
   id: serial("id").primaryKey(),

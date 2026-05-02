@@ -4,8 +4,8 @@
  * Strategy:
  *  1. x-real-ip   — single value set by nginx / most reverse proxies; not
  *                   client-spoofable when behind a trusted proxy.
- *  2. x-forwarded-for (leftmost) — added by CDN/edge infrastructure on
- *                   platforms like Vercel. Clients can inject extra entries
+ *  2. x-forwarded-for (leftmost) — added by CDN/edge infrastructure on most
+ *                   managed platforms. Clients can inject extra entries
  *                   into this header when there is no trusted proxy in front,
  *                   so the email-based rate limit should always be used as a
  *                   second line of defence.

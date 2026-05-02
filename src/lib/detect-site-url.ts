@@ -5,12 +5,11 @@
  * trusted platform-injected environment variables.
  *
  * Priority order:
- *   1. NEXTAUTH_URL                   — explicit override, always wins
- *   2. REPLIT_DEV_DOMAIN              — Replit (set by replit-init.ts before server starts)
- *   3. VERCEL_PROJECT_PRODUCTION_URL  — Vercel stable production URL (no protocol)
- *   4. RAILWAY_PUBLIC_DOMAIN          — Railway (hostname only, no protocol)
- *   5. RENDER_EXTERNAL_URL            — Render (full https:// URL)
- *   6. null                           — unknown host; caller falls back to localhost
+ *   1. NEXTAUTH_URL          — explicit override, always wins
+ *   2. REPLIT_DEV_DOMAIN     — Replit (set by replit-init.ts before server starts)
+ *   3. RAILWAY_PUBLIC_DOMAIN — Railway (hostname only, no protocol)
+ *   4. RENDER_EXTERNAL_URL   — Render (full https:// URL)
+ *   5. null                  — unknown host; caller falls back to localhost
  *
  * Security note: all vars here are injected by trusted infrastructure,
  * never derived from HTTP request headers. Auto-detection from these
@@ -29,9 +28,6 @@ export function detectSiteUrl(): string | null {
 
   if (e.REPLIT_DEV_DOMAIN)
     return `https://${e.REPLIT_DEV_DOMAIN}`;
-
-  if (e.VERCEL_PROJECT_PRODUCTION_URL)
-    return `https://${e.VERCEL_PROJECT_PRODUCTION_URL}`;
 
   if (e.RAILWAY_PUBLIC_DOMAIN)
     return `https://${e.RAILWAY_PUBLIC_DOMAIN}`;
@@ -71,9 +67,6 @@ export function detectSetupUrl(): string | null {
 
   if (e.REPLIT_DEV_DOMAIN)
     return `https://${e.REPLIT_DEV_DOMAIN}`;
-
-  if (e.VERCEL_PROJECT_PRODUCTION_URL)
-    return `https://${e.VERCEL_PROJECT_PRODUCTION_URL}`;
 
   if (e.RAILWAY_PUBLIC_DOMAIN)
     return `https://${e.RAILWAY_PUBLIC_DOMAIN}`;

@@ -2,15 +2,15 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-// DATABASE_URL is the canonical name. POSTGRES_URL is injected automatically
-// by the Vercel + Supabase integration, so we fall back to it for zero-config
-// Vercel deployments. POSTGRES_URL_NON_POOLING is intentionally not used here
-// because the Pool already manages connections — we want the pooler URL.
+// DATABASE_URL is the canonical name. Some hosted Postgres providers inject
+// POSTGRES_URL instead, so we fall back to it for zero-config setups.
+// POSTGRES_URL_NON_POOLING is intentionally not used here because the Pool
+// already manages connections — we want the pooler URL.
 const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
 // During `next build`, Next.js imports every route module to collect page data
 // for static generation. DATABASE_URL is often absent from the build environment
-// (Vercel build containers don't receive runtime secrets by default).
+// (most managed build containers don't receive runtime secrets by default).
 //
 // Throwing here at import time caused build failures even though dynamically-
 // rendered pages never execute DB queries at build time.
@@ -22,7 +22,7 @@ const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 // At runtime (not build), the full check runs and a missing URL is still fatal.
 if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build") {
   throw new Error(
-    "No database connection string found. Set DATABASE_URL (or POSTGRES_URL for Vercel+Supabase)."
+    "No database connection string found. Set DATABASE_URL (or POSTGRES_URL when supplied by the host)."
   );
 }
 

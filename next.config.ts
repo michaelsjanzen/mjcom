@@ -17,11 +17,6 @@ const remotePatterns: NextConfig["images"] extends { remotePatterns?: infer R } 
     hostname: "*.supabase.co",
     pathname: "/storage/v1/object/public/**",
   },
-  // Vercel Blob — covers any project using Vercel Blob storage
-  {
-    protocol: "https",
-    hostname: "*.public.blob.vercel-storage.com",
-  },
 ];
 
 // If S3_PUBLIC_URL is set, parse it and allow that bucket hostname.
@@ -64,9 +59,10 @@ const nextConfig: NextConfig = {
 
   experimental: {
     serverActions: {
-      // Vercel caps request bodies at 4.5 MB regardless of this value.
-      // Set to match so the Next.js layer rejects oversized requests with a
-      // clear error before Vercel's infrastructure returns a cryptic 413.
+      // 4.5 MB ceiling on form-data Server Actions. Most managed platforms
+      // cap request bodies around this value; matching it gives the app a
+      // chance to reject oversized requests with a clean error rather than
+      // letting the platform return a cryptic 413.
       bodySizeLimit: "4.5mb",
     },
   },

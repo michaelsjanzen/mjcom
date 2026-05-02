@@ -378,7 +378,7 @@ async function main() {
   // encrypted in site_config. On Replit dev, this step decrypts them and writes
   // them to .env.local so the Next.js server process picks them up at startup.
   // On Replit production: use Replit Secrets — .env.local is ephemeral in prod.
-  // On Vercel/other: set env vars in the platform secrets panel instead.
+  // On other hosts: set env vars in your host's secrets panel instead.
   if (!isProd) {
     try {
       const { getConfig } = await import("../src/lib/config");

@@ -14,9 +14,12 @@ import { checkApiRateLimit } from "@/lib/rate-limit";
  * but whose published flag is still false (i.e. they were scheduled).
  *
  * Secured with a Bearer token matching CRON_SECRET.
- * Vercel calls this automatically via vercel.json cron config.
- * For self-hosted installs, run with system cron or any HTTP scheduler:
+ *
+ * Trigger this from any HTTP scheduler — system cron, cron-job.org,
+ * GitHub Actions, an external uptime service, etc.:
  *   curl -H "Authorization: Bearer $CRON_SECRET" https://yoursite.com/api/cron/publish-scheduled
+ *
+ * Recommended schedule: every 5 minutes.
  */
 export async function GET(req: NextRequest) {
   const limited = checkApiRateLimit(req);

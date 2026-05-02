@@ -127,7 +127,7 @@ export default async function AuthSettingsPage({
             <strong className="text-zinc-600">Replit:</strong> Credentials are automatically loaded from the database into the server environment at startup — no Replit secrets panel entry required. Restart the dev server (or redeploy) after saving for changes to take effect.
           </p>
           <p>
-            <strong className="text-zinc-600">Vercel / other platforms:</strong> Set <code className="bg-zinc-100 px-1 rounded">GITHUB_CLIENT_ID</code>, <code className="bg-zinc-100 px-1 rounded">GITHUB_CLIENT_SECRET</code>, <code className="bg-zinc-100 px-1 rounded">GOOGLE_CLIENT_ID</code>, and <code className="bg-zinc-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> as environment variables in your platform&apos;s secrets panel. Values saved here are ignored on these platforms.
+            <strong className="text-zinc-600">Other platforms:</strong> Set <code className="bg-zinc-100 px-1 rounded">GITHUB_CLIENT_ID</code>, <code className="bg-zinc-100 px-1 rounded">GITHUB_CLIENT_SECRET</code>, <code className="bg-zinc-100 px-1 rounded">GOOGLE_CLIENT_ID</code>, and <code className="bg-zinc-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> as environment variables in your host&apos;s secrets panel. Values saved here are ignored on these platforms.
           </p>
           <p>
             The first OAuth user to sign in becomes an admin. Subsequent OAuth sign-ins are provisioned as editors and can be promoted in <a href="/admin/users" className="underline text-zinc-600">Users</a>.
