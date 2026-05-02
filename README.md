@@ -115,26 +115,24 @@ NEXTAUTH_SECRET=your-secret-here
 
 Optional variables (OAuth, S3, etc.) are documented in [REQUIREMENTS.md](./REQUIREMENTS.md#environment-variables).
 
-### 3. Initialize the database
-
-```bash
-npm run db:init
-```
-
-This creates the schema and runs migrations. Admin account creation has moved to the in-app setup wizard — visit `/setup` after the server starts (or go to `/admin/login`, which redirects there automatically on a fresh install).
-
-For existing deployments after pulling new changes:
-```bash
-npm run db:migrate     # incremental migrations (safe to re-run)
-```
-
-### 4. Start the dev server
+### 3. Start the dev server
 
 ```bash
 npm run dev
 ```
 
-The admin dashboard is at [http://localhost:3000/admin](http://localhost:3000/admin).
+The `predev` hook auto-runs `scripts/replit-init.ts`, which creates the database schema and applies migrations. There is no separate `db:init` step on a fresh install.
+
+### 4. Create your admin account
+
+Open the dev URL in a browser and visit **`/setup`**. Fill in your email, password, and name in the wizard. (Visiting `/admin/login` on a fresh install redirects there automatically.)
+
+The admin dashboard is at [http://localhost:3000/admin](http://localhost:3000/admin) once you've signed in.
+
+For existing deployments after pulling schema changes:
+```bash
+npm run db:migrate     # incremental migrations (safe to re-run)
+```
 
 ---
 
@@ -430,8 +428,8 @@ The full contract is in [`THEMES.md`](./THEMES.md). The [`/themes/_template/`](.
 | `npm run dev` | Start development server (port 5000 default) |
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
-| `npm run setup` | Seed default site config (non-admin) |
-| `npm run db:init` | Create schema + run migrations in one step (fresh installs) |
+| `npm run setup` | **Local-dev only.** Interactive admin-account seeder; do **not** run on Replit or any other agent-driven environment — it uses `readline` and will hang waiting on a TTY. Use the `/setup` browser wizard instead. |
+| `npm run db:init` | **Local-dev only.** Calls `db:create` followed by `npm run setup`; same TTY caveat as above. The `predev` hook handles schema creation automatically on Replit. |
 | `npm run db:create` | Create all tables with IF NOT EXISTS guards (safe to re-run) |
 | `npm run db:migrate` | Apply pending migration scripts in order; tracks applied files in `schema_migrations` (safe to re-run) |
 | `npm run db:push` | Push Drizzle schema via drizzle-kit (dev only) |

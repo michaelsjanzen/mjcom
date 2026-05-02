@@ -37,7 +37,25 @@ If the user doesn't have a production URL yet, save the other two and continue �
 
 2. **Never modify npm scripts to use `npx tsx`.** If `tsx` appears missing, run `npm install` and retry the npm script. Do not change any script to call `npx tsx` or `./node_modules/.bin/tsx` — it is unnecessary and breaks the established convention.
 
-3. **Use `npm run db:init` to set up the database** — do not run `tsx` directly or write custom schema creation scripts. This project has first-run setup built in.
+3. **Do nothing manual for the database. Let `predev` handle it.**
+   When `npm run dev` starts, the `predev` hook automatically runs
+   `scripts/replit-init.ts`, which creates the schema and applies migrations.
+   Wait for it to finish before assuming anything is broken.
+
+4. **Do NOT run `npm run setup` or `npm run db:init` on Replit.**
+   These call `scripts/setup.ts`, which uses `readline` to prompt for the
+   admin email and password interactively. Inside an agent process there is
+   no TTY for `readline` to read from, so the script blocks forever waiting
+   on input that will never arrive — appearing as a multi-hour "hang."
+   Admin account creation on Replit is **always** done through the browser
+   at `/setup` after the dev server is running (or after first deploy in
+   production). The CLI setup script is for local-dev convenience only.
+
+5. **Do NOT seed admin credentials from `.env.example`.**
+   `.env.example` is documentation, not configuration. Its placeholder
+   values like `ADMIN_EMAIL=admin@example.com` must never be copied into
+   `.env.local` or Replit Secrets. The `/setup` browser wizard is the
+   canonical admin-creation path.
 
 These mistakes account for the majority of failed Replit setups. Check for them before proceeding.
 
@@ -212,9 +230,9 @@ CMS configuration is stored in the `site_config` PostgreSQL table (a single row,
    - **Security review before installing:** Before copying any recipe files, read the plugin source — at minimum `plugins/<id>/index.ts` and `actions.ts`. Recipes are written by community authors: review source for hardcoded credentials, unexpected external network calls, use of `eval()`, or writes to paths outside `plugins/<id>/`. If anything looks suspicious, flag it to the user before proceeding. Never install a recipe that fails this review.
 4. **Creating themes.** Copy `/themes/_template/` as a starting point. Read `THEMES.md` before writing any theme code. Register the new theme in `src/lib/theme-registry.ts`.
 5. **UI consistency.** Always use Tailwind CSS classes. Matching the admin UI patterns already established in `src/app/admin/` is required.
-6. **Rebuildability.** Ensuring the app can be fully restored by running `npm install`, `npm run db:push`, and `npm run setup` is a standing requirement.
+6. **Rebuildability.** Ensuring the app can be fully restored by running `npm install` followed by `npm run dev` (which auto-runs schema creation via the `predev` hook) and then visiting `/setup` in the browser is a standing requirement.
    - **Importing from another environment:** node_modules from a different host can arrive in a dirty state and cause `ENOTEMPTY` errors on `npm install`. Always do a clean reinstall in this case: `rm -rf node_modules && npm install`.
-7. **Always use npm scripts — never invoke `tsx` directly.** `tsx` lives in `node_modules/.bin` and is only on PATH when running via npm. Always use `npm run dev`, `npm run db:init`, etc. If `tsx` appears missing in the shell, run `npm install` and retry the npm command. **Do not change any script to use `npx tsx` or `./node_modules/.bin/tsx`** — it is unnecessary and adds noise to the codebase.
+7. **Always use npm scripts — never invoke `tsx` directly.** `tsx` lives in `node_modules/.bin` and is only on PATH when running via npm. Always use `npm run dev`, `npm run db:migrate`, etc. If `tsx` appears missing in the shell, run `npm install` and retry the npm command. **Do not change any script to use `npx tsx` or `./node_modules/.bin/tsx`** — it is unnecessary and adds noise to the codebase.
 8. **Do not create these files** — they conflict with existing infrastructure and must never exist in this project:
    - `server/db.ts` or `server/` directory — Replit's PostgreSQL blueprint scaffolds this automatically; delete it immediately if it appears. The database client lives at `src/lib/db/index.ts`.
    - `instrumentation.ts` — not used; creates startup errors in this configuration.
@@ -284,13 +302,14 @@ If that also fails, clearing the stale directory first resolves it: `rm -rf node
 
 ```bash
 npm install             # husky || true -- safe in CI/Replit/Docker
-npm run db:init         # db:push + setup in one step
-npm run dev             # Start dev server
+npm run dev             # Starts dev server. The predev hook auto-runs
+                        # scripts/replit-init.ts which creates the schema
+                        # and applies migrations.
 ```
 
-The admin login page is at `/admin/login`.
+Then open the dev URL in a browser and visit **`/setup`** to create the admin account through the in-app wizard. On a fresh install, visiting `/admin/login` automatically redirects there.
 
-Admin account creation is handled by the in-app setup wizard at `/setup`. On a fresh install, visiting `/admin/login` automatically redirects there. `npm run setup` and the `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` env vars are no longer used.
+The CLI script `npm run setup` exists for local-dev convenience only — **do not run it on Replit or any other agent-driven environment.** It uses `readline` to prompt interactively and will hang forever waiting on a TTY that doesn't exist. The `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` env vars are an automation backdoor for that script and should not be set on Replit either.
 
 For **existing deployments** after a schema update:
 
