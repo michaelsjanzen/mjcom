@@ -140,6 +140,21 @@ npm run db:migrate     # incremental migrations (safe to re-run)
 
 Two steps are required before a production deployment works correctly.
 
+### 0. Verify `.replit` has a `[deployment]` section
+
+If you imported the repo via Replit's **Import from GitHub** button, you're already set — skip to Step 1. The repo ships with a correct `[deployment]` block.
+
+If Replit reports **"Invalid run command"** when you click Publish, your `.replit` is missing the deployment config. This can happen if the project was assembled in a non-standard way (blank Repl with code pasted in, partial clone, AI-agent setup that recreated `.replit` from scratch). Open `.replit` and confirm it contains:
+
+```toml
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run  = ["npm", "run", "start"]
+```
+
+If the section is missing, ask Replit's agent to "configure deployment as autoscale with build `npm run build` and run `npm run start`" — it will write the section through the proper tool. (Direct edits to `.replit` are blocked by the platform.)
+
 ### 1. Set `PRODUCTION_URL` as a Replit secret (or environment variable)
 
 `PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and automatically writes both `NEXTAUTH_URL` and `PRODUCTION_URL` to `.env.local` so the Next.js server picks them up:

@@ -318,7 +318,23 @@ npm run db:migrate      # Run incremental migration scripts
 
 #### Deploying to Production
 
-Two steps are required before a production deployment works correctly:
+Three steps are required before a production deployment works correctly:
+
+**0. Configure the `[deployment]` section in `.replit`.**
+
+Replit's Publish flow needs an explicit `[deployment]` block. The repo ships with one, but a fresh agent-driven setup may overwrite `.replit` without it (the platform blocks direct file writes to `.replit`, so when an agent recreates the workflow config it can drop the deploy block). If absent, Publish fails with **"Invalid run command"** before any build is attempted.
+
+Use Replit's `deployConfig` tool — never edit `.replit` directly:
+
+```javascript
+await deployConfig({
+    deploymentTarget: "autoscale",
+    build: ["npm", "run", "build"],
+    run:   ["npm", "run", "start"]
+});
+```
+
+`autoscale` is correct for Pugmill (stateless Next.js, scales with request volume, only billed on traffic). Do not use `vm` (no need for persistent server memory) or `static` (the app is server-rendered).
 
 **1. Production URL — auto-detected for standard Replit deployments.**
 
