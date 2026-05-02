@@ -59,7 +59,8 @@
   "overrides": {
     "@auth/core": "0.41.1",
     "esbuild": "^0.25.0",
-    "nodemailer": "^8.0.5"
+    "nodemailer": "^8.0.5",
+    "postcss": "^8.5.10"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
