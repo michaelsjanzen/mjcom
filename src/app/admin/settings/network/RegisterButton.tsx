@@ -30,8 +30,8 @@ export default function RegisterButton() {
       // can review then hit Save.
       const tokenInput = document.querySelector<HTMLInputElement>('input[name="networkToken"]');
       if (tokenInput) {
-        // Replace the password field type temporarily so the value is visible
-        tokenInput.type  = "text";
+        // Field is type="text" (not type="password") so the value is
+        // already visible — no type swap needed.
         tokenInput.value = data.network_token;
       }
 

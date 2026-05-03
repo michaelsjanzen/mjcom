@@ -92,8 +92,15 @@ export default async function NetworkPage({
           <label className="block text-sm font-medium text-zinc-700 mb-1">Network Token</label>
           <input
             name="networkToken"
-            type="password"
+            type="text"
             autoComplete="off"
+            spellCheck={false}
+            // type="text" (not "password") is intentional: this is an
+            // API token, not a user credential. Using type="password"
+            // triggers the browser's "save this password" prompt on every
+            // form submission, which is wrong UX for a non-credential
+            // token. The admin is already authenticated and has
+            // permission to see their own token.
             placeholder={
               network.networkToken
                 ? "••••••••••••••••••••••• (leave blank to keep current)"
