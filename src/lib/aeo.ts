@@ -22,6 +22,11 @@ export const aeoSchema = z.object({
   // Extended JSON-LD schema type and its field data
   schemaType: z.enum(EXTENDED_SCHEMA_TYPES).optional(),
   schemaData: z.record(z.string()).optional(),
+  // When true, the Q&A pairs are still emitted to JSON-LD FAQPage and
+  // /llms.txt (so AI / search engines see them), but the visible FAQ
+  // widget skips this post. Useful when Q&A is structured for crawlers
+  // but considered redundant or off-tone for human readers.
+  hideQaFromReaders: z.boolean().optional(),
 }).optional();
 
 export type AeoMetadata = NonNullable<z.infer<typeof aeoSchema>>;

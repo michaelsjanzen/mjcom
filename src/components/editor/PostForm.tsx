@@ -147,7 +147,7 @@ function calcAeoHealth(aeo: AeoMetadata, content: string, featuredAlt: string | 
   return { score, items };
 }
 
-function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, generating, currentStep, summary, onFix, fixing }: {
+function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, generating, currentStep, summary }: {
   aeo: AeoMetadata;
   content: string;
   featuredAlt?: string | null;
@@ -156,8 +156,6 @@ function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, g
   generating?: boolean;
   currentStep?: string | null;
   summary?: { step: string; applied: boolean; detail: string }[] | null;
-  onFix?: (key: string) => void;
-  fixing?: string | null;
 }) {
   const { score, items } = calcAeoHealth(aeo, content, featuredAlt);
   const grade    = score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 40 ? "Fair" : "Poor";
@@ -185,20 +183,6 @@ function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, g
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-xs ${item.pass ? "text-zinc-700" : "text-zinc-400"}`}>{item.label}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {!item.pass && aiEnabled && item.fixTool && onFix && (
-                    <button
-                      type="button"
-                      onClick={() => onFix(item.key)}
-                      disabled={!!fixing}
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed ${
-                        fixing === item.key
-                          ? "btn-processing border-transparent text-white cursor-wait"
-                          : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
-                      }`}
-                    >
-                      {fixing === item.key ? "Working…" : "Generate"}
-                    </button>
-                  )}
                   {!item.pass && item.scrollTo && (
                     <button
                       type="button"
@@ -238,7 +222,6 @@ function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, g
           >
             {generating ? "Generating…" : "Generate All"}
           </button>
-          <p className="text-[11px] text-zinc-400 mt-1.5 text-center leading-relaxed">Fills excerpt, slug, SEO, AEO, categories, tags, topic focus, and internal links — one step at a time.</p>
           {generating && currentStep && (
             <div className="mt-3 space-y-1.5">
               <div className="h-1 rounded-full overflow-hidden bg-zinc-100">
@@ -500,7 +483,6 @@ export default function PostForm({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [fixingKey, setFixingKey] = useState<string | null>(null);
 
   // localStorage draft key for new posts (no postId yet)
   const LS_DRAFT_KEY = "pugmill:draft:new-post";
@@ -660,11 +642,6 @@ export default function PostForm({
     editorRef,
     aeoRef,
   });
-
-  // Clear fixingKey once the AEO action completes.
-  useEffect(() => {
-    if (pendingAction !== "aeo") setFixingKey(null);
-  }, [pendingAction]);
 
   function renderToolResult(action: string, result: string) {
     let content: React.ReactNode;
@@ -1360,9 +1337,37 @@ export default function PostForm({
               generating={agentRunning}
               currentStep={agentCurrentStep}
               summary={agentSummary}
-              onFix={(key) => { setFixingKey(key); handleDraftAeo(); }}
-              fixing={fixingKey && pendingAction === "aeo" && !agentRunning ? fixingKey : null}
             />
+
+            {/* Categories — placed under AEO Health for prominence */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <TaxonomyPicker
+                label="Categories"
+                fieldName="categories"
+                items={allCategories}
+                selectedIds={initialCategoryIds ? new Set(initialCategoryIds) : undefined}
+                onCreate={createCategoryInline}
+                onAiSuggest={aiEnabled ? handleSuggestCategories : undefined}
+                aiPending={pendingAction === "categories"}
+                suggestions={catSuggestions ?? undefined}
+                onSuggestDismiss={() => setCatSuggestions(null)}
+              />
+            </div>
+
+            {/* Tags — placed under AEO Health for prominence */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <TaxonomyPicker
+                label="Tags"
+                fieldName="tags"
+                items={allTags}
+                selectedIds={initialTagIds ? new Set(initialTagIds) : undefined}
+                onCreate={createTagInline}
+                onAiSuggest={aiEnabled ? handleSuggestTags : undefined}
+                aiPending={pendingAction === "tags"}
+                suggestions={tagSuggestions ?? undefined}
+                onSuggestDismiss={() => setTagSuggestions(null)}
+              />
+            </div>
 
             {/* AI usage meter */}
             {aiEnabled && (() => {
@@ -1523,36 +1528,6 @@ export default function PostForm({
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Categories */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <TaxonomyPicker
-                label="Categories"
-                fieldName="categories"
-                items={allCategories}
-                selectedIds={initialCategoryIds ? new Set(initialCategoryIds) : undefined}
-                onCreate={createCategoryInline}
-                onAiSuggest={aiEnabled ? handleSuggestCategories : undefined}
-                aiPending={pendingAction === "categories"}
-                suggestions={catSuggestions ?? undefined}
-                onSuggestDismiss={() => setCatSuggestions(null)}
-              />
-            </div>
-
-            {/* Tags */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <TaxonomyPicker
-                label="Tags"
-                fieldName="tags"
-                items={allTags}
-                selectedIds={initialTagIds ? new Set(initialTagIds) : undefined}
-                onCreate={createTagInline}
-                onAiSuggest={aiEnabled ? handleSuggestTags : undefined}
-                aiPending={pendingAction === "tags"}
-                suggestions={tagSuggestions ?? undefined}
-                onSuggestDismiss={() => setTagSuggestions(null)}
-              />
             </div>
 
             {/* Social Post */}

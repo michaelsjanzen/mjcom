@@ -38,6 +38,10 @@ export interface PageViewProps {
   categories?: { name: string; slug: string }[];
   tags?: { name: string; slug: string }[];
   publishedAt?: Date | null;
+  /** Featured image URL. When set, rendered between the page header and body. */
+  featuredImageUrl?: string | null;
+  /** Alt text for the featured image (defaults to the page title when omitted). */
+  featuredImageAlt?: string | null;
 }
 
 function formatDate(date: Date | null | undefined): string | null {
@@ -76,6 +80,8 @@ export default function PageView({
   categories = [],
   tags = [],
   publishedAt = null,
+  featuredImageUrl = null,
+  featuredImageAlt = null,
 }: PageViewProps) {
   const contentWidth = layoutConfig?.contentWidth ?? "narrow";
   const sidebar = layoutConfig?.sidebar ?? "none";
@@ -146,6 +152,16 @@ export default function PageView({
           {title}
         </h1>
       </header>
+
+      {/* Featured image — rendered between header and body when set */}
+      {featuredImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={featuredImageUrl}
+          alt={featuredImageAlt ?? title}
+          className="w-full h-auto rounded-lg"
+        />
+      )}
 
       {/* articleHeader slot — plugin content above the body */}
       {articleHeaderContent}

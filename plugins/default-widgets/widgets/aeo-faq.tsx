@@ -9,7 +9,13 @@ interface QaPair {
 }
 
 interface AeoMetadata {
-  qa?: QaPair[];
+  /** Canonical field name from src/lib/aeo.ts. */
+  questions?: QaPair[];
+  /** When true, the widget renders nothing for this post — but the
+   *  Q&A pairs are still emitted to JSON-LD FAQPage and /llms.txt for
+   *  AI / search-engine consumption. Per-post override set in the AEO
+   *  metadata editor. */
+  hideQaFromReaders?: boolean;
 }
 
 // ── Plain style ───────────────────────────────────────────────────────────────
@@ -122,7 +128,12 @@ export async function aeoFaqWidget(
     .limit(1);
 
   const meta = row[0]?.aeoMetadata as AeoMetadata | null;
-  const pairs = meta?.qa?.filter(p => p.q?.trim() && p.a?.trim()) ?? [];
+
+  // Per-post opt-out: keep the Q&A in JSON-LD / llms.txt for AI consumption
+  // but suppress the visible FAQ widget on this page.
+  if (meta?.hideQaFromReaders) return null;
+
+  const pairs = meta?.questions?.filter(p => p.q?.trim() && p.a?.trim()) ?? [];
 
   if (pairs.length === 0) return null;
 

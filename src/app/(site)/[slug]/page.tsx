@@ -176,6 +176,13 @@ export default async function GenericPage(
     pageFooterWidgets = await WidgetArea({ widgetIds: pageFooterIds, context: widgetCtx }) ?? undefined;
   }
 
+  // Fetch featured image for the page (uses page.featuredImage column).
+  const pageFeaturedMedia = page.featuredImage
+    ? await db.query.media.findFirst({ where: (m, { eq }) => eq(m.id, page.featuredImage!) })
+    : null;
+  const pageFeaturedUrl = pageFeaturedMedia?.url ?? null;
+  const pageFeaturedAlt = pageFeaturedMedia?.altText ?? null;
+
   const PageView = getThemePageView(activeTheme);
   const slotProps = { postId: page.id, postSlug: page.slug, postType: "page" as const };
   const articleHeaderSlots = getActiveSlots("articleHeader", config.modules.activePlugins, config.modules.pluginSettings);
@@ -194,6 +201,8 @@ export default async function GenericPage(
         categories={pageCategories}
         tags={pageTags}
         publishedAt={page.publishedAt}
+        featuredImageUrl={pageFeaturedUrl}
+        featuredImageAlt={pageFeaturedAlt}
         articleHeaderContent={articleHeaderSlots.map(({ pluginId, Component }) => (
           <Component key={pluginId} {...slotProps} />
         ))}

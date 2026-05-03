@@ -188,6 +188,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     const breadcrumbs = await resolveBreadcrumbs(post.parentId);
     const PageView = getThemePageView(activeTheme);
 
+    // Fetch featured image for the page (parallel with sibling fetch below)
+    const pageFeaturedMedia = post.featuredImage
+      ? await db.query.media.findFirst({ where: (m, { eq }) => eq(m.id, post.featuredImage!) })
+      : null;
+    const pageFeaturedUrl = pageFeaturedMedia?.url ?? null;
+    const pageFeaturedAlt = pageFeaturedMedia?.altText ?? null;
+
     // Fetch sibling pages (same parent, type=page, published) for sidebar navigation
     let siblingPages: { title: string; slug: string }[] = [];
     if (pageLayoutConfig.sidebar !== "none" && post.parentId !== null) {
@@ -226,6 +233,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           siblingPages={siblingPages}
           sidebarContent={pageSidebar}
           canonicalUrl={canonicalUrl}
+          featuredImageUrl={pageFeaturedUrl}
+          featuredImageAlt={pageFeaturedAlt}
           articleHeaderContent={articleHeaderSlots.map(({ pluginId, Component }) => (
             <Component key={pluginId} {...slotProps} />
           ))}

@@ -10,6 +10,10 @@ export interface AeoMetadata {
   keywords?: string[];
   schemaType?: ExtendedSchemaType;
   schemaData?: Record<string, string>;
+  /** When true, the Q&A pairs are still emitted to JSON-LD FAQPage and
+   *  /llms.txt for AI / search-engine consumption, but the visible FAQ
+   *  widget skips this post. */
+  hideQaFromReaders?: boolean;
 }
 
 // Per-type field definitions: [fieldKey, label, placeholder, isTextarea?]
@@ -86,6 +90,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
   const kwInputRef = useRef<HTMLInputElement>(null);
   const [schemaType, setSchemaType] = useState<ExtendedSchemaType | "">(defaultValue?.schemaType ?? "");
   const [schemaData, setSchemaData] = useState<Record<string, string>>(defaultValue?.schemaData ?? {});
+  const [hideQaFromReaders, setHideQaFromReaders] = useState<boolean>(defaultValue?.hideQaFromReaders ?? false);
 
   function buildValue(
     s: string,
@@ -94,6 +99,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
     kws: string[],
     st: ExtendedSchemaType | "",
     sd: Record<string, string>,
+    hideQa: boolean = false,
   ): AeoMetadata {
     return {
       ...(s ? { summary: s } : {}),
@@ -106,6 +112,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       })) } : {}),
       ...(kws.length > 0 ? { keywords: kws } : {}),
       ...(st ? { schemaType: st, schemaData: sd } : {}),
+      ...(hideQa ? { hideQaFromReaders: true } : {}),
     };
   }
 
@@ -117,17 +124,19 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       const kws = (aeo.keywords ?? []).slice(0, 10);
       const st = aeo.schemaType ?? "";
       const sd = aeo.schemaData ?? {};
+      const hideQa = aeo.hideQaFromReaders ?? false;
       setSummary(s);
       setQuestions(qs);
       setEntities(es);
       setKeywords(kws);
       setSchemaType(st);
       setSchemaData(sd);
-      onChange?.(buildValue(s, qs, es, kws, st, sd));
+      setHideQaFromReaders(hideQa);
+      onChange?.(buildValue(s, qs, es, kws, st, sd, hideQa));
     },
   }));
 
-  const value = buildValue(summary, questions, entities, keywords, schemaType, schemaData);
+  const value = buildValue(summary, questions, entities, keywords, schemaType, schemaData, hideQaFromReaders);
 
   return (
     <div className="space-y-5">
@@ -222,6 +231,29 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
             <p className="text-xs text-zinc-400 italic py-1">No Q&amp;A pairs yet.</p>
           )}
         </div>
+
+        {/* Per-post visibility control: hide the rendered FAQ widget while
+            keeping the Q&A in JSON-LD FAQPage and /llms.txt for AI / search. */}
+        {questions.length > 0 && (
+          <label className="flex items-start gap-2 mt-3 pt-3 border-t border-zinc-100 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hideQaFromReaders}
+              onChange={e => {
+                const next = e.target.checked;
+                setHideQaFromReaders(next);
+                onChange?.(buildValue(summary, questions, entities, keywords, schemaType, schemaData, next));
+              }}
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-700 focus:ring-zinc-400 cursor-pointer"
+            />
+            <span className="text-xs text-zinc-600 leading-relaxed">
+              <span className="font-medium">Hide Q&amp;A from readers on this page.</span>{" "}
+              <span className="text-zinc-400">
+                The pairs above stay in JSON-LD FAQPage and <code className="bg-zinc-100 px-1 rounded">/llms.txt</code> so AI engines and crawlers still see them. Only the visible FAQ widget skips this post.
+              </span>
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Named Entities */}

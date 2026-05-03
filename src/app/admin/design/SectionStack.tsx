@@ -104,15 +104,22 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-          checked ? "bg-zinc-900" : "bg-zinc-200"
+        // Both states need to stay visible against light AND dark card
+        // backgrounds. The previous "off" state used bg-zinc-200 which
+        // was nearly invisible on Design > Homepage in dark mode. Adding
+        // an inset ring + dark-mode override ensures the track is always
+        // visible. "On" uses violet for clear affordance in both modes.
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ring-1 ring-inset ${
+          checked
+            ? "bg-violet-600 ring-violet-700"
+            : "bg-zinc-200 ring-zinc-300 dark:bg-zinc-600 dark:ring-zinc-500"
         }`}
       >
         <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
           checked ? "translate-x-4" : "translate-x-0.5"
         }`} />
       </button>
-      <span className="text-sm text-zinc-700">{label}</span>
+      <span className="text-sm text-zinc-700 dark:text-zinc-200">{label}</span>
     </label>
   );
 }
