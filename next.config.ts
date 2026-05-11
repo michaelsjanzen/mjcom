@@ -41,6 +41,33 @@ if (process.env.S3_PUBLIC_URL) {
   }
 }
 
+// ── Server Action origin allowlist ────────────────────────────────────────────
+// Next.js 13.4+ enforces a same-origin check on Server Action POSTs by
+// comparing the Origin header against the host. On platforms where a reverse
+// proxy sits in front of the app (Replit with a custom domain, Vercel, etc.)
+// the internal host header can differ from the public origin, and Next.js
+// rejects the request. We allowlist the production hostname (derived from
+// PRODUCTION_URL or NEXTAUTH_URL at build time — both are Replit Secrets) so
+// custom-domain deployments work end-to-end. Without this, /setup form POSTs
+// and other Server Action submissions can be rejected, sometimes manifesting
+// as ECONNRESET when the proxy closes the connection mid-flight.
+function extractHostname(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null;
+  try {
+    const url = rawUrl.startsWith("http") ? new URL(rawUrl) : new URL(`https://${rawUrl}`);
+    return url.hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+const serverActionAllowedOrigins = [
+  extractHostname(process.env.PRODUCTION_URL),
+  extractHostname(process.env.NEXTAUTH_URL),
+  // Replit's auto-injected dev domain for the preview pane during npm run dev.
+  process.env.REPLIT_DEV_DOMAIN || null,
+].filter((host): host is string => !!host);
+
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const nextConfig: NextConfig = {
@@ -64,6 +91,12 @@ const nextConfig: NextConfig = {
       // chance to reject oversized requests with a clean error rather than
       // letting the platform return a cryptic 413.
       bodySizeLimit: "4.5mb",
+      // Allowlist derived from PRODUCTION_URL / NEXTAUTH_URL / REPLIT_DEV_DOMAIN
+      // (see comment above the const). Empty array is the default same-origin
+      // behaviour — no risk of weakening security when no envs are set.
+      ...(serverActionAllowedOrigins.length > 0
+        ? { allowedOrigins: serverActionAllowedOrigins }
+        : {}),
     },
   },
 

@@ -114,12 +114,53 @@ export async function validateAiKey(
 /**
  * Complete first-run setup: create admin user, update site config, seed content.
  * Returns { error } if validation fails; redirects on success.
+ *
+ * Wrapped in try/catch so any unexpected runtime error (DB constraint, network
+ * timeout during AI key validation, slow seed) is surfaced to the client as
+ * { error } and logged server-side, instead of the action body throwing and
+ * the browser receiving a generic "unexpected response" / ECONNRESET. The
+ * NEXT_REDIRECT signal that powers next/navigation's redirect() is detected
+ * by its `digest` property and re-thrown so the framework can process it.
  */
 export async function completeSetup(
   formData: FormData
 ): Promise<{ error: string } | void> {
+  try {
+    return await _runSetup(formData);
+  } catch (err: unknown) {
+    // NEXT_REDIRECT must propagate — it's how redirect() works in Server
+    // Actions. Detect by the `digest` property the framework attaches.
+    if (
+      err != null &&
+      typeof (err as Record<string, unknown>).digest === "string" &&
+      ((err as Record<string, unknown>).digest as string).startsWith("NEXT_REDIRECT")
+    ) {
+      throw err;
+    }
+    if (
+      err != null &&
+      typeof (err as Record<string, unknown>).digest === "string" &&
+      ((err as Record<string, unknown>).digest as string).startsWith("NEXT_NOT_FOUND")
+    ) {
+      throw err;
+    }
+    // Real error — log full detail for the deployment logs, return a short
+    // message to the client so it shows in the wizard's error banner instead
+    // of a cryptic "unexpected response".
+    console.error("[Setup] completeSetup error:", err);
+    const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    return { error: `Setup failed — ${msg}` };
+  }
+}
+
+async function _runSetup(
+  formData: FormData
+): Promise<{ error: string } | void> {
+  console.log("[Setup] start");
+
   // Security gate: reject if already set up (race condition safe — DB is the gate)
   if (await isAlreadySetup()) {
+    console.log("[Setup] already set up — refusing");
     return { error: "Setup has already been completed." };
   }
 
@@ -128,6 +169,7 @@ export async function completeSetup(
   const ip = getClientIp(hdrs);
   const rateCheck = setupLimiter.check(ip, 5);
   if (!rateCheck.success) {
+    console.log("[Setup] rate-limited", ip);
     return { error: "Too many setup attempts. Please wait 15 minutes and try again." };
   }
 
@@ -147,6 +189,7 @@ export async function completeSetup(
 
   const result = setupSchema.safeParse(raw);
   if (!result.success) {
+    console.log("[Setup] validation failed:", result.error.issues.map(i => i.path.join(".")).join(","));
     return { error: result.error.issues.map(i => i.message).join(", ") };
   }
 
@@ -159,9 +202,14 @@ export async function completeSetup(
     return { error: "Passwords do not match." };
   }
 
-  // Validate AI key if a provider and key were both supplied
+  // Validate AI key if a provider and key were both supplied.
+  // This is a real network call to Anthropic/OpenAI/Gemini and can be the
+  // single slowest part of setup on a cold container — log around it so
+  // a timeout here is obvious in the deployment logs.
   if (aiProvider && aiKey) {
+    console.log("[Setup] validating AI key with", aiProvider);
     const keyCheck = await testAiKey(aiProvider, aiKey);
+    console.log("[Setup] AI key validation result:", keyCheck);
     if (!keyCheck) {
       return {
         error:
@@ -171,9 +219,11 @@ export async function completeSetup(
   }
 
   // Hash password
+  console.log("[Setup] hashing password (bcrypt, 12 rounds)");
   const passwordHash = await bcrypt.hash(password, 12);
 
   // Insert admin user, get generated ID back
+  console.log("[Setup] inserting admin user", email);
   const inserted = await db
     .insert(adminUsers)
     .values({
@@ -186,8 +236,10 @@ export async function completeSetup(
     .returning({ id: adminUsers.id });
 
   const adminId = inserted[0].id;
+  console.log("[Setup] admin user inserted, id:", adminId);
 
   // Update site config (spread to preserve all other fields)
+  console.log("[Setup] updating site config");
   const config = await getConfig();
   const aiUpdates =
     aiProvider && aiKey
@@ -207,10 +259,16 @@ export async function completeSetup(
     ...aiUpdates,
   });
 
-  // Seed default content (idempotent)
+  // Seed default content (idempotent). Can take multiple seconds on first run
+  // since it inserts every default post + page. If a Replit proxy timeout
+  // closes the connection, the log line below will be the last entry the
+  // user sees and "redirecting to login" will never print.
+  console.log("[Setup] seeding default content");
   await seedDefaultContent(adminId);
+  console.log("[Setup] default content seeded");
 
   setupLimiter.reset(ip);
+  console.log("[Setup] redirecting to /admin/login?setup=1");
   redirect("/admin/login?setup=1");
 }
 
