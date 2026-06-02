@@ -87,31 +87,33 @@ Community recipes are listed at the [Pugmill community directory](https://github
 - PostgreSQL 16 database
 - (Optional) AWS S3-compatible bucket for media storage
 
-### Recommended install on Replit (Import from GitHub)
+### Recommended install on Replit (Agent prompt — **not** "Import from GitHub")
 
-The fastest way in: in Replit choose **Create App → Import from GitHub** and point it at `https://github.com/pugmillcms/pugmill`. Replit provisions Node.js and PostgreSQL from the repo's `.replit` config, and the first boot runs `replit-init` automatically — generating secrets, creating the database schema, applying migrations, and pointing you to `/setup` to create your admin account.
+> **Do not use Replit's "Import from GitHub" button.** Replit's importer now reclassifies the repo and auto-generates a bogus **"Migrate from Vercel to Replit"** task. Its agent runs that task *before* reading this project's instructions and goes off the rails — hallucinating a monorepo "migration" that does not exist (Pugmill is a standard Next.js app; there is nothing to migrate). The flow below avoids this by making **your** prompt the agent's first instruction.
 
-> **If your Run button or deployment looks wrong right after import:**
-> Replit occasionally reclassifies an imported repo as an "artifact" (slides, mockup, etc.) and overwrites the `.replit` file, wiping the run/deploy config and the PostgreSQL module. If that happens, restore it from the Replit **Shell**:
->
-> ```bash
-> npm run replit:restore
-> ```
->
-> (or use the **"Restore Replit config"** action in the Tools panel), then reload the workspace. The canonical config lives at `scripts/replit.template`.
+**1. Create a new blank Replit App** — the **Agent app** type. Start from an empty project, **not** a GitHub import.
 
-**Secrets are handled for you.** On first run `replit-init` auto-generates `NEXTAUTH_SECRET`, `AI_ENCRYPTION_KEY`, and `CRON_SECRET`, and auto-detects `NEXTAUTH_URL` from your Replit domain — you don't need to provide any of them. Two optional follow-ups the first-run banner reminds you about:
+**2. Select the most capable agent.** In the Agent panel, choose the **highest tier available** (e.g. **Power Mode** / the strongest model). Pugmill's setup is multi-step (PostgreSQL module, first-run schema + migrations, secrets, `/setup`); the strongest agent follows the project's `AGENT.md` far more reliably than the default.
 
-- **Pin `NEXTAUTH_SECRET`** as a Replit Secret before your first *production* deploy, so logins survive redeploys (otherwise each redeploy regenerates it and signs everyone out).
-- **Set `PRODUCTION_URL`** as a Replit Secret only if you use a **custom domain** — otherwise the deployment domain is auto-detected.
+**3. Paste this prompt to the agent** (it points the agent at the repo and, critically, tells it to read the project's instructions first and ignore Replit's auto-generated migration task):
 
-Prefer to drive it from the Replit agent chat? Paste this prompt:
 ```
-1. Install Pugmill CMS from https://github.com/pugmillcms/pugmill using Import from GitHub.
-2. Carefully follow the instructions in the project's AGENT.md and README.
-3. If the Run button or deploy config looks wrong after import, run: npm run replit:restore — then reload.
-4. Secrets auto-generate on first run. Only ask me for PRODUCTION_URL if I'm using a custom domain, and remind me to pin NEXTAUTH_SECRET before the production deploy.
+Install Pugmill CMS from https://github.com/pugmillcms/pugmill
+
+Important — read before doing anything:
+- This is a standard Next.js app. Do NOT "migrate" it to anything. If Replit
+  has auto-generated a "Migrate from Vercel to Replit" (or any migration) task,
+  ignore and dismiss it — there is nothing to migrate.
+- FIRST, clone the repo and read AGENT.md and README.md, then follow AGENT.md's
+  setup steps exactly, in order. Do not improvise or restructure the project.
+- Add the PostgreSQL module so DATABASE_URL is set. Then run the dev server —
+  the predev hook (scripts/replit-init.ts) creates the schema and applies
+  migrations on first start. Wait for it to finish before assuming anything broke.
+- Ask me for any secrets AGENT.md requires, and offer pre-generated values.
+- When setup completes, tell me to open /setup to create my admin account.
 ```
+
+**Secrets:** on first run `replit-init` auto-generates `NEXTAUTH_SECRET`, `AI_ENCRYPTION_KEY`, and `CRON_SECRET`, and auto-detects `NEXTAUTH_URL` from your Replit domain — so for a basic install you don't need to provide any. Before your first **production** deploy, pin `NEXTAUTH_SECRET` as a Replit Secret (so logins survive redeploys), and set `PRODUCTION_URL` only if you use a **custom domain**.
 
 ### 1. Clone and install
 
