@@ -14,6 +14,7 @@ import { createNotification, deleteNotificationByReplaceKey } from "../../src/li
 import { getUnreadCount } from "./db";
 import { submissionLimiter, SUBMISSION_RATE_LIMIT } from "../../src/lib/rate-limit";
 import { verifyFormToken } from "../../src/lib/form-protection";
+import { verifyTurnstile } from "../../src/lib/turnstile";
 import { auditLog } from "../../src/lib/audit-log";
 
 async function requireAdmin() {
@@ -116,6 +117,20 @@ export async function submitContactForm(
   if (!message) return { status: "error", message: "Message is required." };
   if (message.length > 5000) {
     return { status: "error", message: "Message is too long (max 5000 characters)." };
+  }
+
+  // Cloudflare Turnstile — checked AFTER field validation so a validation error
+  // doesn't consume the single-use token (the user's corrected resubmit reuses
+  // it). No-op unless both Turnstile keys are configured. On failure we return a
+  // visible error rather than silently dropping, so a real visitor who fails the
+  // challenge can retry instead of losing their message.
+  const turnstile = await verifyTurnstile(formData.get("cf-turnstile-response") as string, ip);
+  if (!turnstile.ok) {
+    console.warn(`[contact-form] Turnstile verification failed: ${turnstile.reason}`);
+    return {
+      status: "error",
+      message: "We couldn't verify your submission. Please refresh the page and try again.",
+    };
   }
 
   try {

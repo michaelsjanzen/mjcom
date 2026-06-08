@@ -1,6 +1,7 @@
 import { getConfig } from "../../../src/lib/config";
 import type { PostFooterSlotProps } from "../../../src/lib/plugin-registry";
 import { issueFormToken } from "../../../src/lib/form-protection";
+import { turnstileSiteKey } from "../../../src/lib/turnstile";
 import ContactFormUI from "./ContactFormUI";
 
 /**
@@ -35,6 +36,7 @@ export default async function ContactFormSection({ postSlug }: PostFooterSlotPro
         showSocialUrl={showSocialUrl}
         requireSocialUrl={requireSocialUrl}
         token={issueFormToken("contact-form")}
+        turnstileSiteKey={turnstileSiteKey() ?? ""}
       />
     </section>
   );

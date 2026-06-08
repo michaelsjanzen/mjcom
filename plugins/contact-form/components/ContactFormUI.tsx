@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Script from "next/script";
 import { submitContactForm, type ContactFormState } from "../actions";
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
   requireSocialUrl: boolean;
   /** Signed anti-bot token issued server-side; verified on submit. */
   token: string;
+  /** Cloudflare Turnstile site key, or "" when Turnstile is not configured. */
+  turnstileSiteKey: string;
 }
 
 const initial: ContactFormState = { status: "idle", message: "" };
@@ -51,7 +54,7 @@ function TextInput({ id, name, type = "text", required, maxLength, autoComplete,
   );
 }
 
-export default function ContactFormUI({ showPhone, requirePhone, showSocialUrl, requireSocialUrl, token }: Props) {
+export default function ContactFormUI({ showPhone, requirePhone, showSocialUrl, requireSocialUrl, token, turnstileSiteKey }: Props) {
   const [state, action, isPending] = useActionState(submitContactForm, initial);
 
   if (state.status === "success") {
@@ -121,6 +124,26 @@ export default function ContactFormUI({ showPhone, requirePhone, showSocialUrl, 
           style={fieldStyle}
         />
       </div>
+
+      {/* Cloudflare Turnstile — invisible bot challenge. Only when configured.
+          The script auto-renders the widget and injects a hidden
+          `cf-turnstile-response` field that the server action verifies. */}
+      {turnstileSiteKey && (
+        <>
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="afterInteractive"
+            async
+            defer
+          />
+          <div
+            className="cf-turnstile"
+            data-sitekey={turnstileSiteKey}
+            data-theme="auto"
+            data-refresh-expired="auto"
+          />
+        </>
+      )}
 
       {state.status === "error" && (
         <p className="text-sm" style={{ color: "#dc2626" }}>
