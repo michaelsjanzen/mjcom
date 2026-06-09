@@ -17,6 +17,11 @@ const remotePatterns: NextConfig["images"] extends { remotePatterns?: infer R } 
     hostname: "*.supabase.co",
     pathname: "/storage/v1/object/public/**",
   },
+  // Vercel Blob — managed media storage for the Vercel deployment overlay
+  {
+    protocol: "https",
+    hostname: "*.public.blob.vercel-storage.com",
+  },
 ];
 
 // If S3_PUBLIC_URL is set, parse it and allow that bucket hostname.
