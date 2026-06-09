@@ -12,11 +12,18 @@ import { existsSync } from "fs";
 import { config } from "dotenv";
 if (existsSync(".env.local")) config({ path: ".env.local" });
 
-import { db } from "../src/lib/db";
 import { sql } from "drizzle-orm";
+import { createBootstrapDb } from "./_bootstrap-db";
 
 export async function createSchema() {
   console.log("  Creating database tables...");
+
+  // Use a dedicated bootstrap client rather than importing the app's db module.
+  // create-schema runs via `await import()` inside replit-init's module graph,
+  // and resolving src/lib/db's named export in that nested context broke
+  // first-boot on some Node/tsx versions. createBootstrapDb() is lazy and
+  // self-contained, so it sidesteps that entirely. See ./_bootstrap-db.ts.
+  const db = createBootstrapDb();
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "admin_users" (

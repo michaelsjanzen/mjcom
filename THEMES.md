@@ -8,6 +8,8 @@ This document is the reference for building, editing, and distributing themes fo
 
 A Pugmill theme controls the visual presentation of the public-facing site. Themes are self-contained packages in the `themes/` directory. Each theme ships as code -- React components, a layout wrapper, and a design token contract.
 
+> For the design systems that influenced the built-in themes (editorial, mono, default) and the admin UX, see [`DESIGN_INFLUENCES.md`](./DESIGN_INFLUENCES.md).
+
 The system has a clear separation of concerns:
 
 | Layer | Who controls it | Where it lives |

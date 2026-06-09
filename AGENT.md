@@ -22,33 +22,29 @@
 
 **Complete the relevant steps in order before touching anything else.**
 
-### Step 1 — Collect all required secrets upfront
+### Step 1 — Secrets
 
-**Universal across every host.** Ask the user for these values before running `npm install` or starting the app. Provide generated values for convenience. Do not proceed until all five are set as platform secrets:
+**To get the app running you need NO secrets from the user.** `DATABASE_URL` is provided by the platform's Postgres integration, and `replit-init` auto-generates `NEXTAUTH_SECRET`, `AI_ENCRYPTION_KEY`, and `CRON_SECRET` into `.env.local` on first start. **Do not prompt the user for secrets just to run dev — start the app first.** Prompting for all five upfront (and the workflow restarts each save triggers) is the single biggest source of install friction; avoid it.
 
-| Secret | How to get it |
+**Secrets only matter at deploy time.** A production deploy wipes `.env.local` on every release, so the three auto-generated secrets must be **pinned** as platform secrets to survive redeploys, and the URL pair must be **provided by the user**:
+
+| Secret | What to do before deploying |
 |---|---|
-| `NEXTAUTH_SECRET` | Generate with: `openssl rand -base64 32` |
-| `AI_ENCRYPTION_KEY` | Generate with: `openssl rand -hex 32` |
-| `CRON_SECRET` | Generate with: `openssl rand -hex 32` |
-| `PRODUCTION_URL` | The production URL (with `https://`). On Replit: from the Deploy panel, e.g. `https://pugmill.yourname.replit.app`. On Vercel/Railway/Render: assigned by the host or your custom domain. |
-| `NEXTAUTH_URL` | **Same value as `PRODUCTION_URL`** — set both. |
+| `NEXTAUTH_SECRET` | **Pin** the auto-generated value — otherwise every redeploy regenerates it and signs all users out. |
+| `AI_ENCRYPTION_KEY` | **Pin** the auto-generated value — otherwise stored AI keys can't be decrypted after a redeploy. |
+| `CRON_SECRET` | **Pin** the auto-generated value — otherwise `/api/cron/*` returns 401 and scheduled posts silently never publish. |
+| `PRODUCTION_URL` | **Ask the user** — their deploy URL with `https://` (Replit: Deploy panel; Vercel/Railway/Render: host-assigned or custom domain). |
+| `NEXTAUTH_URL` | **Ask the user** — same value as `PRODUCTION_URL`. Set both; a platform secret can't silently fail to load the way `.env.local` can. |
+
+Read each auto-generated value from `.env.local` (the first-run banner also prints them) when you pin it.
 
 **Where to save them, by host:**
 
-- **Replit:** the Secrets tool (lock icon in the sidebar). Use `requestEnvVar` to prompt the user.
-- **Vercel:** Project Settings → Environment Variables (Production scope).
-- **Railway / Render:** the platform's dashboard env vars section.
-- **Local dev:** `.env.local` (gitignored).
-- **Self-hosted:** shell, systemd unit, Docker compose — wherever the running process reads env from.
-
-If the user doesn't have a production URL yet, save the other three and continue — `PRODUCTION_URL` and `NEXTAUTH_URL` can be added before the first deployment.
-
-**Why set `NEXTAUTH_URL` as a secret when `PRODUCTION_URL` already exists?** Platform secrets are injected into every process unconditionally. Scripts and `.env.local` loading can silently fail; a platform-level secret cannot. Setting `NEXTAUTH_URL` directly is the belt-and-suspenders guarantee that authentication works on first deploy. `PRODUCTION_URL` is still required for the startup scripts — set both.
-
-**Why include `CRON_SECRET` upfront?** Both `/api/cron/publish-scheduled` (auto-publishes scheduled posts) and `/api/cron/report-network` (sends opted-in bot analytics to aeopugmill.com) reject every call with HTTP 401 if `CRON_SECRET` is missing. The audit log records nothing on a 401, so the failure is silent — scheduled posts never publish, network reports never reach the network. Setting it now means both crons work the moment any scheduler hits the route.
-
-**Why upfront?** These are auto-generated for dev and saved to `.env.local`, but `.env.local` is wiped on every production deployment. Saving them as platform secrets first means production never crashes on a missing secret.
+- **Replit:** the Secrets tool (lock icon). Use `requestEnvVar` to prompt the user — **only when preparing to deploy, not to run dev.**
+- **Vercel:** Project Settings → Environment Variables. Vercel does **not** run `replit-init`, so set all five here manually before deploying.
+- **Railway / Render:** the platform's dashboard env-vars section (also no `replit-init` — set all five).
+- **Local dev:** `.env.local` (gitignored) — auto-generated; nothing to do.
+- **Self-hosted:** wherever the running process reads env from.
 
 ### Step 2 — Universal pitfalls *(every host)*
 
@@ -173,6 +169,8 @@ Plugins are statically registered in `src/lib/plugin-registry.ts` in the `ALL_PL
 #### 4. Design Token System
 
 Each theme defines its editable surface in `themes/<id>/design.ts` via `DESIGN_TOKEN_DEFS`. The admin Design page renders controls for all `editable: true` tokens. Changes are saved as a draft to `theme_design_configs` (status: `'draft'`) and go live only when published (status: `'published'`). `buildCssString()` injects token values as CSS custom properties into `:root {}` in the theme's `Layout.tsx`. Reading `THEMES.md` in full before creating or modifying a theme is required.
+
+When building or changing **admin UI** (not themes), follow `UX_PATTERNS.md` — it defines which feedback surface to use (toast vs. modal vs. banner vs. notification), the destructive-action confirmation contract, content/voice rules, and the accessibility baseline. `DESIGN_INFLUENCES.md` records the design systems behind the tokens and admin UX.
 
 #### 5. Server Actions and Plugin Initialization
 

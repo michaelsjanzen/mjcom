@@ -87,39 +87,33 @@ Community recipes are listed at the [Pugmill community directory](https://github
 - PostgreSQL 16 database
 - (Optional) AWS S3-compatible bucket for media storage
 
-### Recommended install on Replit (do not use "Import from GitHub")
+### Recommended install on Replit (Agent prompt — **not** "Import from GitHub")
 
-Replit's **Import from GitHub** button tries to auto-classify the imported repo as a Replit "artifact" (slides, mockup, etc.) and overwrites the `.replit` file in the process. This breaks Pugmill's deploy configuration and confuses the agent in the new workspace.
+> **Do not use Replit's "Import from GitHub" button.** Replit's importer now reclassifies the repo and auto-generates a bogus **"Migrate from Vercel to Replit"** task. Its agent runs that task *before* reading this project's instructions and goes off the rails — hallucinating a monorepo "migration" that does not exist (Pugmill is a standard Next.js app; there is nothing to migrate). The flow below avoids this by making **your** prompt the agent's first instruction.
 
-**Use this flow instead:**
+**1. Create a new blank Replit App** — the **Agent app** type. Start from an empty project, **not** a GitHub import.
 
-Create a **new blank Replit project** (Node.js template).
+**2. Select the most capable agent.** In the Agent panel, choose the **highest tier available** (e.g. **Power Mode** / the strongest model). Pugmill's setup is multi-step (PostgreSQL module, first-run schema + migrations, secrets, `/setup`); the strongest agent follows the project's `AGENT.md` far more reliably than the default.
 
-> **Generating your own secret values (if the agent doesn't):**
-> A well-behaved agent will offer to generate `NEXTAUTH_SECRET`, `AI_ENCRYPTION_KEY`, and `CRON_SECRET` for you. If yours doesn't, generate them from any terminal — macOS, Linux, WSL, or Windows PowerShell — using Node, which you already have installed:
->
-> ```bash
-> # NEXTAUTH_SECRET — base64
-> node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
->
-> # AI_ENCRYPTION_KEY and CRON_SECRET — hex (64 chars, exact length required)
-> node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-> ```
->
-> macOS and Linux can also use `openssl rand -base64 32` and `openssl rand -hex 32` — same output. Whichever you pick, paste the value into the Replit Secrets tool (lock icon) under the matching key name. Never paste a secret into the chat.
+**3. Paste this prompt to the agent** (it points the agent at the repo and, critically, tells it to read the project's instructions first and ignore Replit's auto-generated migration task):
 
-In the Replit chat, send this prompt to the agent:
 ```
-1. Install Pugmill CMS from https://github.com/pugmillcms/pugmill
-2. Carefully follow the instructions you find in the project.
-3. Be sure to ask me for the five secrets and provide pre-generated values for me to use:
-a. NEXTAUTH_URL
-b. NEXTAUTH_SECRET
-c. PRODUCTION_URL
-d. AI_ENCRYPTION_KEY
-e. CRON_SECRET
-4. Help and remind me to set them up.
+Install Pugmill CMS from https://github.com/pugmillcms/pugmill
+
+Important — read before doing anything:
+- This is a standard Next.js app. Do NOT "migrate" it to anything. If Replit
+  has auto-generated a "Migrate from Vercel to Replit" (or any migration) task,
+  ignore and dismiss it — there is nothing to migrate.
+- FIRST, clone the repo and read AGENT.md and README.md, then follow AGENT.md's
+  setup steps exactly, in order. Do not improvise or restructure the project.
+- Add the PostgreSQL module so DATABASE_URL is set. Then run the dev server —
+  the predev hook (scripts/replit-init.ts) creates the schema and applies
+  migrations on first start. Wait for it to finish before assuming anything broke.
+- Ask me for any secrets AGENT.md requires, and offer pre-generated values.
+- When setup completes, tell me to open /setup to create my admin account.
 ```
+
+**Secrets:** on first run `replit-init` auto-generates `NEXTAUTH_SECRET`, `AI_ENCRYPTION_KEY`, and `CRON_SECRET`, and auto-detects `NEXTAUTH_URL` from your Replit domain — so for a basic install you don't need to provide any. Before your first **production** deploy, pin `NEXTAUTH_SECRET` as a Replit Secret (so logins survive redeploys), and set `PRODUCTION_URL` only if you use a **custom domain**.
 
 ### 1. Clone and install
 
@@ -287,6 +281,8 @@ pugmill/
 ├── pugmill.config.json           # Seed config: active theme, enabled plugins
 ├── AGENT.md                      # AI agent instructions (read this first)
 ├── PHILOSOPHY.md                 # Design principles for the human-AI team
+├── DESIGN_INFLUENCES.md          # Design systems behind the themes & admin UX
+├── UX_PATTERNS.md                # Admin interaction & content patterns
 ├── CHANGELOG.md                  # Version history
 ├── REQUIREMENTS.md               # Full product requirements
 └── SECURITY.md                   # Security policy

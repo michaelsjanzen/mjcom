@@ -6,6 +6,7 @@ import { encryptString } from "../../../src/lib/encrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import RegisterButton from "../../../src/app/admin/settings/network/RegisterButton";
+import ParticipateToggle from "./ParticipateToggle";
 
 export default async function NetworkPage({
   searchParams,
@@ -73,19 +74,7 @@ export default async function NetworkPage({
               When enabled, a daily cron job sends yesterday&apos;s bot-visit counts and content signals to aeopugmill.com.
             </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer ml-4 shrink-0">
-            <input
-              type="checkbox"
-              name="participateInNetworkCheckbox"
-              id="participateCheck"
-              defaultChecked={network.participateInNetwork}
-              className="sr-only peer"
-              onChange={undefined}
-            />
-            <input type="hidden" name="participateInNetwork" id="participateHidden" value={network.participateInNetwork ? "true" : "false"} />
-            <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:bg-violet-600 transition-colors" />
-            <div className="absolute left-0.5 top-0.5 bg-white border border-zinc-300 rounded-full h-5 w-5 transition-all peer-checked:translate-x-5 peer-checked:border-white" />
-          </label>
+          <ParticipateToggle defaultChecked={network.participateInNetwork} />
         </div>
 
         <div>
@@ -132,20 +121,6 @@ export default async function NetworkPage({
           Save Network Settings
         </button>
       </form>
-
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-(function() {
-  var cb = document.getElementById('participateCheck');
-  var hid = document.getElementById('participateHidden');
-  if (cb && hid) {
-    cb.addEventListener('change', function() { hid.value = cb.checked ? 'true' : 'false'; });
-  }
-})();
-`,
-        }}
-      />
 
       {recentSubmissions.length > 0 && (
         <section className="bg-white border border-zinc-200 rounded-lg overflow-hidden">

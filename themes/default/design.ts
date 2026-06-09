@@ -11,6 +11,11 @@
 //
 // The 'default' theme ID is reserved as the system fallback.
 // NEVER remove 'default' from THEME_ALLOWLIST in src/lib/theme-registry.ts.
+//
+// Influence (inferred, not an original design note): shadcn/ui and the wider
+// Tailwind ecosystem. Slate neutrals + blue-600 accent + Inter / JetBrains Mono,
+// with the background/surface/foreground/muted/accent token vocabulary shadcn
+// popularized. See /DESIGN_INFLUENCES.md for the evidence and caveats.
 // ============================================================
 
 import type { DesignTokenDef, ColorPreset } from "../../src/types/design";

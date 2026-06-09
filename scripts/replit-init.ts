@@ -1,31 +1,23 @@
 /* ============================================================
- * REPLIT AGENT — PREREQUISITE CHECKLIST
- * Read and complete these steps BEFORE installing dependencies
- * or starting the application. Do not skip.
+ * REPLIT AGENT — FIRST-RUN NOTES
  * ============================================================
  *
- * STEP 1 — After the app starts, call requestEnvVar for NEXTAUTH_SECRET
- *   Use: requestEnvVar({ requestType: "secret", keys: ["NEXTAUTH_SECRET"] })
- *   The value is printed in the startup banner. If it did not appear,
- *   get it with: grep NEXTAUTH_SECRET .env.local
- *   If .env.local is missing or NEXTAUTH_SECRET is absent, generate one:
- *     openssl rand -base64 32
- *   Do NOT mention the value in chat — use the secrets tool so the user
- *   gets a confirmation dialog to paste it in.
+ * To RUN the app you need NO secrets from the user. This script
+ * auto-generates NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, and CRON_SECRET
+ * into .env.local on first start, and DATABASE_URL comes from the
+ * PostgreSQL integration. Just start the dev server and let it boot.
  *
- * STEP 2 — Immediately after, call requestEnvVar for PRODUCTION_URL
- *   Use: requestEnvVar({ requestType: "secret", keys: ["PRODUCTION_URL"] })
- *   This prompts the user for their production domain
- *   (e.g. https://yourapp.replit.app — found in Replit's deployment panel).
- *   Do NOT skip this step. Do NOT just mention it in chat.
- *   Use the secrets tool — it shows the user a dialog they cannot miss.
+ * Do NOT call requestEnvVar during install / to run dev. Prompting for
+ * secrets upfront (and the workflow restart each save triggers) is the
+ * biggest source of install friction.
  *
- * STEP 3 — Only after both secrets are saved, tell the user setup is done.
- *
- * WHY THIS MATTERS:
- * This script writes NEXTAUTH_URL from PRODUCTION_URL when the
- * production container first boots. If PRODUCTION_URL is missing,
- * NEXTAUTH_URL will be wrong and login will fail in production.
+ * Secrets are a DEPLOY-TIME concern only. When the user is ready to
+ * deploy to production (where .env.local is wiped each release):
+ *   - Pin NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, CRON_SECRET as platform
+ *     secrets (read the values from .env.local) so they survive redeploys.
+ *   - Ask the user for PRODUCTION_URL and set NEXTAUTH_URL to the same
+ *     value, so login works after deploy.
+ * See AGENT.md "Step 1 — Secrets" for the full deploy checklist.
  * ============================================================
  */
 
@@ -141,7 +133,7 @@ async function main() {
     process.exit(1);
   }
 
-  // ── Step 2: NEXTAUTH_SECRET and AI_ENCRYPTION_KEY ───────────────────────────
+  // ── Step 2: NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, CRON_SECRET ─────────────────
   const envMap = readEnvLocal();
   const configured: string[] = [];
 
@@ -170,6 +162,18 @@ async function main() {
     envMap.set("AI_ENCRYPTION_KEY", key);
     process.env.AI_ENCRYPTION_KEY = key;
     configured.push("AI_ENCRYPTION_KEY");
+  }
+  // CRON_SECRET secures the scheduled-publish and network-report cron endpoints.
+  // Those routes fail closed (HTTP 401) when it is unset, so generating it here
+  // makes scheduled publishing work out of the box instead of silently never
+  // running. The value is written to .env.local; read it from there (or pin it
+  // as a Replit Secret) when configuring an external scheduler to call the
+  // /api/cron/* endpoints with `Authorization: Bearer <CRON_SECRET>`.
+  if (!getVar("CRON_SECRET", envMap)) {
+    const key = crypto.randomBytes(32).toString("hex");
+    envMap.set("CRON_SECRET", key);
+    process.env.CRON_SECRET = key;
+    configured.push("CRON_SECRET");
   }
 
   if (isProd && configured.includes("NEXTAUTH_SECRET")) {
@@ -278,14 +282,13 @@ async function main() {
       }
     }
 
-    // ── Dev: PRODUCTION_URL is needed so production login works after deploy ──
+    // ── Dev: PRODUCTION_URL is only needed at deploy time ──
     if (!getVar("PRODUCTION_URL", envMap)) {
-      console.warn(
-        "  ⚠  PRODUCTION_URL not set.\n" +
-        "  ACTION REQUIRED FOR AI AGENTS: Call requestEnvVar with requestType 'secret'\n" +
-        "  and keys ['PRODUCTION_URL'] RIGHT NOW so the user sees a confirmation dialog.\n" +
-        "  Do NOT skip this step. Do NOT just mention it in chat — use the secrets tool.\n" +
-        "  Without PRODUCTION_URL, the production server cannot derive NEXTAUTH_URL.\n"
+      console.log(
+        "  ℹ  PRODUCTION_URL not set — fine for now. It is only needed before you\n" +
+        "     DEPLOY (the production server derives NEXTAUTH_URL from it). Set it as\n" +
+        "     a platform secret when you're ready to deploy. Do not block dev startup\n" +
+        "     on it, and do not prompt the user for it just to run the app.\n"
       );
     }
   }
@@ -304,22 +307,19 @@ async function main() {
     const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
     console.log(
       "  ┌─────────────────────────────────────────────────────────────────┐\n" +
-      "  │ 2 ACTIONS REQUIRED before your first production deployment      │\n" +
+      "  │ DEPLOY-TIME ONLY (not needed to run dev — do this later)        │\n" +
       "  │                                                                 │\n" +
-      "  │ 1. Save NEXTAUTH_SECRET as a Replit secret so sessions survive  │\n" +
-      "  │    container restarts and deployments. Without it, every deploy │\n" +
-      "  │    regenerates the secret and signs all users out.              │\n" +
+      "  │ Before your first production deploy, pin these as platform      │\n" +
+      "  │ secrets so they survive redeploys (production wipes .env.local  │\n" +
+      "  │ each release). Read each value from .env.local.                 │\n" +
       "  │                                                                 │\n" +
-      "  │    AI AGENT: call requestEnvVar({ requestType: 'secret',        │\n" +
-      "  │    keys: ['NEXTAUTH_SECRET'] }) with this value (do NOT chat):  │\n" +
-      `  │      ${secret.slice(0, 61).padEnd(61)} │\n` +
+      "  │   - NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, CRON_SECRET  (pin)      │\n" +
+      "  │   - PRODUCTION_URL + NEXTAUTH_URL (ask user; same value)        │\n" +
       "  │                                                                 │\n" +
-      "  │ 2. Save your production URL as a Replit secret so login works   │\n" +
-      "  │    after deployment. Ask the user for their production URL now. │\n" +
-      "  │    Without it, authentication will fail in production.          │\n" +
+      "  │ NEXTAUTH_SECRET (printed once for convenience):                 │\n" +
+      `  │   ${secret.slice(0, 63).padEnd(63)} │\n` +
       "  │                                                                 │\n" +
-      "  │    AI AGENT: call requestEnvVar({ requestType: 'secret',        │\n" +
-      "  │    keys: ['PRODUCTION_URL'] }) immediately after step 1.        │\n" +
+      "  │ Full checklist: AGENT.md \"Step 1 — Secrets\".                    │\n" +
       "  └─────────────────────────────────────────────────────────────────┘\n"
     );
   }
@@ -329,48 +329,32 @@ async function main() {
   dotenvConfig({ path: ENV_LOCAL, override: false });
 
   // ── Step 3: Database schema ─────────────────────────────────────────────────
-  if (isProd) {
-    // In production, use DB state to decide whether to run migrations.
-    // Fresh install (no admin yet): run full setup.
-    // Existing install: run createSchema only (IF NOT EXISTS — safe), skip migrations.
-    console.log("Database schema");
-    const { createSchema } = await import("./create-schema");
-    await createSchema();
+  // Always run createSchema + migrations, in both dev and prod. Migrations are
+  // tracked in the schema_migrations table and each runs exactly once, so on an
+  // existing install this is a no-op for already-applied migrations and only
+  // applies genuinely pending ones. This is what keeps a "rebuildable" install
+  // correct after a template/code update that adds a new table or column —
+  // without it, updated installs silently miss new schema and crash at runtime
+  // on the affected page (e.g. a missing aeo_network_submissions table).
+  console.log("Database schema");
+  const { createSchema } = await import("./create-schema");
+  await createSchema();
 
-    const existingInstall = await checkExistingInstall();
-    if (!existingInstall) {
-      console.log("Fresh install detected — running migrations...");
-      const { execSync } = await import("child_process");
-      try {
-        execSync("tsx scripts/run-migrations.ts", {
-          stdio: "inherit",
-          env: { ...process.env },
-        });
-      } catch {
-        console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
-      }
-    } else {
-      console.log(
-        "  Existing install detected — skipping automatic migrations.\n" +
-        "  To apply pending schema changes, run: npm run db:migrate\n"
-      );
-    }
-  } else {
-    // Dev: always run createSchema + migrations (idempotent)
-    console.log("Database schema");
-    const { createSchema } = await import("./create-schema");
-    await createSchema();
-
-    console.log("Running migrations...");
-    const { execSync } = await import("child_process");
-    try {
-      execSync("tsx scripts/run-migrations.ts", {
-        stdio: "inherit",
-        env: { ...process.env },
-      });
-    } catch {
-      console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
-    }
+  // Log fresh-vs-existing for operator clarity, but migrate either way.
+  const existingInstall = await checkExistingInstall();
+  console.log(
+    existingInstall
+      ? "Existing install — applying any pending migrations..."
+      : "Fresh install — running migrations..."
+  );
+  const { execSync } = await import("child_process");
+  try {
+    execSync("tsx scripts/run-migrations.ts", {
+      stdio: "inherit",
+      env: { ...process.env },
+    });
+  } catch {
+    console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
   }
 
   // ── Step 3.5 (dev only): Bridge OAuth credentials from DB → .env.local ──────
